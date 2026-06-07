@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveCredential } from "@/lib/settings-store";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -111,8 +112,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const shopDomain = process.env.FILAHIVE_SHOPIFY_DOMAIN;
-    const token = process.env.FILAHIVE_SHOPIFY_TOKEN;
+    // Resolve credentials: KV settings → env var
+    const projectId = searchParams.get("project") || "filahive";
+    const shopDomain = await resolveCredential(projectId, "shopifyDomain");
+    const token = await resolveCredential(projectId, "shopifyToken");
 
     // If no credentials, return mock data
     if (!shopDomain || !token) {

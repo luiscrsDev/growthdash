@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveCredential } from "@/lib/settings-store";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -116,7 +117,9 @@ export async function GET(request: NextRequest) {
     // -----------------------------------------------------------------------
     // If no service account credentials, return mock data
     // -----------------------------------------------------------------------
-    const saJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    // Resolve credentials: KV settings → env var
+    const projectId = searchParams.get("project") || "filahive";
+    const saJson = await resolveCredential(projectId, "serviceAccountJson");
     if (!saJson) {
       const mockData = generateMockData(domain, days);
       return NextResponse.json(mockData, { headers: corsHeaders });

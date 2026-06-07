@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveCredential } from "@/lib/settings-store";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -107,7 +108,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.GOOGLE_PAGESPEED_API_KEY;
+    // Resolve API key: KV settings → env var
+    const projectId = searchParams.get("project") || "filahive";
+    const apiKey = await resolveCredential(projectId, "pagespeedApiKey");
     if (!apiKey) {
       return NextResponse.json(
         { error: "GOOGLE_PAGESPEED_API_KEY is not configured" },
