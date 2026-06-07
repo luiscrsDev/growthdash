@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-cmo-bg text-gray-200 antialiased;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-cmo-bg;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-cmo-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-600;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-terminal-green/20 text-terminal-green;
+  }
+}
+
+@layer components {
+  .terminal-text {
+    @apply font-mono text-terminal-green;
+  }
+
+  .surface-card {
+    @apply bg-cmo-surface border border-cmo-border rounded-lg;
+  }
+
+  .glow-green {
+    text-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
+  }
+
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .tab-button {
+    @apply px-4 py-2 text-sm font-medium rounded-md transition-all duration-200;
+  }
+
+  .tab-button-active {
+    @apply bg-terminal-green/10 text-terminal-green border border-terminal-green/30;
+  }
+
+  .tab-button-inactive {
+    @apply text-gray-500 hover:text-gray-300 hover:bg-white/5;
+  }
+}
+
+@layer utilities {
+  .animate-scan {
+    animation: scan 4s linear infinite;
+  }
+
+  @keyframes scan {
+    0% { opacity: 0.3; }
+    50% { opacity: 1; }
+    100% { opacity: 0.3; }
+  }
+
+  .animate-pulse-green {
+    animation: pulse-green 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-green {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); }
+  }
+}
