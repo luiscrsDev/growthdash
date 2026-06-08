@@ -141,9 +141,8 @@ export async function GET(request: NextRequest) {
     apiUrl.searchParams.set("url", url);
     apiUrl.searchParams.set("strategy", strategy);
     apiUrl.searchParams.set("key", apiKey);
-    apiUrl.searchParams.set(
-      "category",
-      ["PERFORMANCE", "ACCESSIBILITY", "BEST_PRACTICES", "SEO"].join(",")
+    ["PERFORMANCE", "ACCESSIBILITY", "BEST_PRACTICES", "SEO"].forEach((cat) =>
+      apiUrl.searchParams.append("category", cat)
     );
 
     const res = await fetch(apiUrl.toString(), { cache: "no-store" });
