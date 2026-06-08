@@ -1,16 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// ---------------------------------------------------------------------------
-// TODO: Google Ads API integration requires OAuth 2.0 with a refresh token.
-//       Steps to implement:
-//       1. Create a Google Ads developer token (apply at ads.google.com/aw/apicenter)
-//       2. Set up OAuth consent screen in Google Cloud Console
-//       3. Generate a refresh token using the OAuth flow
-//       4. Use the google-ads-api npm package or googleapis with the Ads service
-//       5. Required env vars: GOOGLE_ADS_DEVELOPER_TOKEN, GOOGLE_ADS_CLIENT_ID,
-//          GOOGLE_ADS_CLIENT_SECRET, GOOGLE_ADS_REFRESH_TOKEN, GOOGLE_ADS_LOGIN_CUSTOMER_ID
-//       6. The API uses GAQL (Google Ads Query Language) for querying metrics
-// ---------------------------------------------------------------------------
+import { getProject } from "@/lib/projects";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,13 +28,7 @@ interface GoogleAdsResponse {
     conversionRate: number;
     costPerConversion: number;
   };
-  daily: {
-    date: string;
-    impressions: number;
-    clicks: number;
-    conversions: number;
-    cost: number;
-  }[];
+  daily: { date: string; impressions: number; clicks: number; conversions: number; cost: number }[];
   topSearchTerms: SearchTerm[];
 }
 
@@ -74,14 +57,7 @@ function generateMockData(cid: string, days: number): GoogleAdsResponse {
     const clicks = Math.floor(impressions * (0.04 + Math.random() * 0.03));
     const conversions = Math.floor(clicks * (0.08 + Math.random() * 0.06));
     const cost = Number((clicks * (1.5 + Math.random() * 2)).toFixed(2));
-
-    daily.push({
-      date: d.toISOString().slice(0, 10),
-      impressions,
-      clicks,
-      conversions,
-      cost,
-    });
+    daily.push({ date: d.toISOString().slice(0, 10), impressions, clicks, conversions, cost });
   }
 
   const totalImpressions = daily.reduce((s, r) => s + r.impressions, 0);
@@ -113,15 +89,9 @@ function generateMockData(cid: string, days: number): GoogleAdsResponse {
       conversions: totalConversions,
       cost: Number(totalCost.toFixed(2)),
       cpc: totalClicks > 0 ? Number((totalCost / totalClicks).toFixed(2)) : 0,
-      ctr: totalImpressions > 0
-        ? Number((totalClicks / totalImpressions).toFixed(4))
-        : 0,
-      conversionRate: totalClicks > 0
-        ? Number((totalConversions / totalClicks).toFixed(4))
-        : 0,
-      costPerConversion: totalConversions > 0
-        ? Number((totalCost / totalConversions).toFixed(2))
-        : 0,
+      ctr: totalImpressions > 0 ? Number((totalClicks / totalImpressions).toFixed(4)) : 0,
+      conversionRate: totalClicks > 0 ? Number((totalConversions / totalClicks).toFixed(4)) : 0,
+      costPerConversion: totalConversions > 0 ? Number((totalCost / totalConversions).toFixed(2)) : 0,
     },
     daily,
     topSearchTerms,
@@ -129,7 +99,7 @@ function generateMockData(cid: string, days: number): GoogleAdsResponse {
 }
 
 // ---------------------------------------------------------------------------
-// OPTIONS (CORS pre-flight)
+// OPTIONS
 // ---------------------------------------------------------------------------
 
 export async function OPTIONS() {
@@ -137,19 +107,23 @@ export async function OPTIONS() {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/google-ads?cid=xxx&days=7
+// GET /api/google-ads?project=filahive  (or ?cid=xxx for backwards compat)
 // ---------------------------------------------------------------------------
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const cid = searchParams.get("cid");
+    const projectId = searchParams.get("project") || "filahive";
+    const project = getProject(projectId);
     const daysParam = searchParams.get("days") || "7";
     const days = parseInt(daysParam, 10);
 
+    // Resolve CID — query param > project config
+    const cid = searchParams.get("cid") || project?.googleAds?.customerId;
+
     if (!cid) {
       return NextResponse.json(
-        { error: "Missing required parameter: cid (customer ID)" },
+        { error: "Cannot resolve CID. Provide ?cid= or a valid ?project= with googleAds config" },
         { status: 400, headers: corsHeaders }
       );
     }
@@ -162,7 +136,6 @@ export async function GET(request: NextRequest) {
     }
 
     // TODO: Replace mock data with real Google Ads API call once OAuth is set up.
-    // See the TODO block at the top of this file for implementation steps.
     const data = generateMockData(cid, days);
 
     return NextResponse.json(data, { headers: corsHeaders });

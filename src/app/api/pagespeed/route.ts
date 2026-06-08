@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveCredential } from "@/lib/settings-store";
+import { getProject } from "@/lib/projects";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,7 +43,7 @@ interface PageSpeedResponse {
 // ---------------------------------------------------------------------------
 
 const cache = new Map<string, { data: PageSpeedResponse; expires: number }>();
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const CACHE_TTL_MS = 60 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // CORS headers
@@ -77,7 +78,7 @@ function extractMetric(
 }
 
 // ---------------------------------------------------------------------------
-// OPTIONS (CORS pre-flight)
+// OPTIONS
 // ---------------------------------------------------------------------------
 
 export async function OPTIONS() {
@@ -85,18 +86,22 @@ export async function OPTIONS() {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/pagespeed?domain=xxx&strategy=mobile|desktop
+// GET /api/pagespeed?project=filahive  (or ?domain=xxx for backwards compat)
 // ---------------------------------------------------------------------------
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const domain = searchParams.get("domain");
+    const projectId = searchParams.get("project") || "filahive";
+    const project = getProject(projectId);
     const strategy = searchParams.get("strategy") || "mobile";
+
+    // Resolve domain — query param > project config
+    const domain = searchParams.get("domain") || project?.domain;
 
     if (!domain) {
       return NextResponse.json(
-        { error: "Missing required parameter: domain" },
+        { error: "Cannot resolve domain. Provide ?domain= or a valid ?project=" },
         { status: 400, headers: corsHeaders }
       );
     }
@@ -109,7 +114,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Resolve API key: KV settings → env var
-    const projectId = searchParams.get("project") || "filahive";
     const apiKey = await resolveCredential(projectId, "pagespeedApiKey");
     if (!apiKey) {
       return NextResponse.json(
@@ -173,7 +177,6 @@ export async function GET(request: NextRequest) {
       ttfb: extractMetric(audits, "server-response-time", "ms"),
     };
 
-    // Collect top issues (failed or warning audits sorted by impact)
     const issueAudits = Object.values(audits) as any[];
     const topIssues: PageSpeedIssue[] = issueAudits
       .filter(
@@ -199,7 +202,6 @@ export async function GET(request: NextRequest) {
       topIssues,
     };
 
-    // Store in cache
     cache.set(cacheKey, { data, expires: Date.now() + CACHE_TTL_MS });
 
     return NextResponse.json(data, { headers: corsHeaders });

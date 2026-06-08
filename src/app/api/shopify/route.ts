@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveCredential } from "@/lib/settings-store";
+import { getProject } from "@/lib/projects";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -97,24 +98,21 @@ export async function OPTIONS() {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/shopify?store=xxx
+// GET /api/shopify?project=filahive  (or ?store=xxx for backwards compat)
 // ---------------------------------------------------------------------------
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const store = searchParams.get("store");
+    const projectId = searchParams.get("project") || "filahive";
+    const project = getProject(projectId);
 
-    if (!store) {
-      return NextResponse.json(
-        { error: "Missing required parameter: store" },
-        { status: 400, headers: corsHeaders }
-      );
-    }
+    // Resolve store name — query param > project config
+    const store = searchParams.get("store") || project?.shopify?.store || projectId;
 
     // Resolve credentials: KV settings → env var
-    const projectId = searchParams.get("project") || "filahive";
-    const shopDomain = await resolveCredential(projectId, "shopifyDomain");
+    const shopDomain = await resolveCredential(projectId, "shopifyDomain")
+      || project?.shopify?.shopDomain;
     const token = await resolveCredential(projectId, "shopifyToken");
 
     // If no credentials, return mock data

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveCredential } from "@/lib/settings-store";
+import { getProject } from "@/lib/projects";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -82,7 +83,7 @@ function generateMockData(domain: string, days: number): SearchConsoleResponse {
 }
 
 // ---------------------------------------------------------------------------
-// OPTIONS (CORS pre-flight)
+// OPTIONS
 // ---------------------------------------------------------------------------
 
 export async function OPTIONS() {
@@ -90,19 +91,23 @@ export async function OPTIONS() {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/search-console?domain=xxx&days=7|30
+// GET /api/search-console?project=filahive  (or ?domain=xxx for backwards compat)
 // ---------------------------------------------------------------------------
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const domain = searchParams.get("domain");
+    const projectId = searchParams.get("project") || "filahive";
+    const project = getProject(projectId);
     const daysParam = searchParams.get("days") || "7";
     const days = parseInt(daysParam, 10);
 
+    // Resolve domain — query param > project config
+    const domain = searchParams.get("domain") || project?.domain;
+
     if (!domain) {
       return NextResponse.json(
-        { error: "Missing required parameter: domain" },
+        { error: "Cannot resolve domain. Provide ?domain= or a valid ?project=" },
         { status: 400, headers: corsHeaders }
       );
     }
@@ -114,20 +119,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // -----------------------------------------------------------------------
-    // If no service account credentials, return mock data
-    // -----------------------------------------------------------------------
     // Resolve credentials: KV settings → env var
-    const projectId = searchParams.get("project") || "filahive";
     const saJson = await resolveCredential(projectId, "serviceAccountJson");
     if (!saJson) {
       const mockData = generateMockData(domain, days);
       return NextResponse.json(mockData, { headers: corsHeaders });
     }
 
-    // -----------------------------------------------------------------------
     // Real Google Search Console API call
-    // -----------------------------------------------------------------------
     const { google } = await import("googleapis");
 
     const credentials = JSON.parse(saJson);
@@ -144,8 +143,12 @@ export async function GET(request: NextRequest) {
 
     const formatDate = (d: Date) => d.toISOString().slice(0, 10);
 
+    // Use project-specific siteUrl if available
+    const siteUrl = project?.searchConsole?.siteUrl
+      || (domain.startsWith("http") ? domain : `sc-domain:${domain}`);
+
     const response = await searchconsole.searchanalytics.query({
-      siteUrl: domain.startsWith("http") ? domain : `sc-domain:${domain}`,
+      siteUrl,
       requestBody: {
         startDate: formatDate(startDate),
         endDate: formatDate(endDate),
