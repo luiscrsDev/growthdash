@@ -14,7 +14,7 @@ export interface ProjectConfig {
     customerId: string;    // e.g. 106-780-6098
   };
   searchConsole?: {
-    siteUrl: string;       // e.g. sc-domain:filahive.com.br
+    siteUrl: string;       // e.g. sc-domain:filahive.com
   };
 }
 
@@ -22,13 +22,13 @@ const PROJECTS: Record<string, ProjectConfig> = {
   filahive: {
     id: "filahive",
     name: "FilaHive",
-    domain: "filahive.com.br",
+    domain: "filahive.com",
     shopify: {
       store: "filahive",
       shopDomain: "vvwnie-bg.myshopify.com",
     },
     searchConsole: {
-      siteUrl: "sc-domain:filahive.com.br",
+      siteUrl: "sc-domain:filahive.com",
     },
   },
   aplus: {
