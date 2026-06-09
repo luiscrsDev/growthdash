@@ -157,8 +157,8 @@ export default function DashboardPage() {
   const technicalProps = {
     onPageScore: data.pagespeed
       ? Math.round(
-          (data.pagespeed.mobile.seo + data.pagespeed.desktop.seo +
-            data.pagespeed.mobile.accessibility + data.pagespeed.desktop.accessibility) / 4
+          ((data.pagespeed.mobile?.seo ?? 0) + (data.pagespeed.desktop?.seo ?? 0) +
+            (data.pagespeed.mobile?.accessibility ?? 0) + (data.pagespeed.desktop?.accessibility ?? 0)) / 4
         )
       : 0,
     details: [

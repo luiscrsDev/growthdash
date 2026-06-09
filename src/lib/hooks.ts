@@ -83,6 +83,42 @@ async function fetchJSON<T>(url: string): Promise<T | null> {
   }
 }
 
+// ---------- pagespeed helper: fetch both strategies and merge ----------
+
+async function fetchPageSpeed(projectId: string): Promise<PageSpeedData | null> {
+  try {
+    const baseQ = `?project=${projectId}`
+    const [mobileRes, desktopRes] = await Promise.all([
+      fetchJSON<any>(`/api/pagespeed${baseQ}&strategy=mobile`),
+      fetchJSON<any>(`/api/pagespeed${baseQ}&strategy=desktop`),
+    ])
+
+    if (!mobileRes && !desktopRes) return null
+
+    const defaultScores = { performance: 0, accessibility: 0, bestPractices: 0, seo: 0 }
+
+    return {
+      mobile: mobileRes?.scores ?? defaultScores,
+      desktop: desktopRes?.scores ?? defaultScores,
+      coreWebVitals: (mobileRes ?? desktopRes)?.coreWebVitals ?? {
+        fcp: { value: '0', score: 0 },
+        lcp: { value: '0', score: 0 },
+        tbt: { value: '0', score: 0 },
+        cls: { value: '0', score: 0 },
+        si: { value: '0', score: 0 },
+      },
+      issues: (mobileRes ?? desktopRes)?.topIssues?.map((i: any) => ({
+        ...i,
+        severity: i.score < 0.5 ? 'high' as const : 'medium' as const,
+        category: 'Performance',
+      })) ?? [],
+      fetchedAt: new Date().toISOString(),
+    }
+  } catch {
+    return null
+  }
+}
+
 // ---------- useProjectData ----------
 
 export function useProjectData(projectId: string) {
@@ -113,7 +149,7 @@ export function useProjectData(projectId: string) {
       const baseQ = `?project=${projectId}`
 
       const results = await Promise.allSettled([
-        fetchJSON<PageSpeedData>(`/api/pagespeed${baseQ}`),
+        fetchPageSpeed(projectId),
         fetchJSON<SearchConsoleData>(`/api/search-console${baseQ}`),
         fetchJSON<ShopifyData>(`/api/shopify${baseQ}`),
         fetchJSON<GoogleAdsData>(`/api/google-ads${baseQ}`),
