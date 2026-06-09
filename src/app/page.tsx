@@ -133,9 +133,9 @@ export default function DashboardPage() {
   const trafficProps = {
     stats: data.searchConsole
       ? [
-          { label: 'Impressions', value: data.searchConsole.impressions.toLocaleString(), delta: 2.4 },
-          { label: 'Clicks', value: data.searchConsole.clicks.toLocaleString(), delta: 8.2 },
-          { label: 'Avg Position', value: Math.round(data.searchConsole.position).toString() },
+          { label: 'Impressions', value: ((data.searchConsole as any).totals?.impressions ?? data.searchConsole.impressions ?? 0).toLocaleString(), delta: 2.4 },
+          { label: 'Clicks', value: ((data.searchConsole as any).totals?.clicks ?? data.searchConsole.clicks ?? 0).toLocaleString(), delta: 8.2 },
+          { label: 'Avg Position', value: Math.round((data.searchConsole as any).totals?.avgPosition ?? data.searchConsole.position ?? 0).toString() },
         ]
       : [
           { label: 'Impressions', value: '—' },
