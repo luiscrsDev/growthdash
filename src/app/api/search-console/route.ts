@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveCredential } from "@/lib/settings-store";
 import { getProject } from "@/lib/projects";
 
 // ---------------------------------------------------------------------------
@@ -119,23 +118,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Resolve credentials: KV settings → env var
-    const saJson = await resolveCredential(projectId, "serviceAccountJson");
-    if (!saJson) {
+    // Resolve OAuth2 credentials from env vars
+    const clientId = process.env.GSC_CLIENT_ID;
+    const clientSecret = process.env.GSC_CLIENT_SECRET;
+    const refreshToken = process.env.GSC_REFRESH_TOKEN;
+
+    if (!clientId || !clientSecret || !refreshToken) {
       const mockData = generateMockData(domain, days);
       return NextResponse.json(mockData, { headers: corsHeaders });
     }
 
-    // Real Google Search Console API call
+    // Real Google Search Console API call via OAuth2
     const { google } = await import("googleapis");
 
-    const credentials = JSON.parse(saJson);
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
-    });
+    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
 
-    const searchconsole = google.searchconsole({ version: "v1", auth });
+    const searchconsole = google.searchconsole({ version: "v1", auth: oauth2Client });
 
     const endDate = new Date();
     const startDate = new Date();

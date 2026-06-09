@@ -28,7 +28,7 @@ const PROJECTS: Record<string, ProjectConfig> = {
       shopDomain: "vvwnie-bg.myshopify.com",
     },
     searchConsole: {
-      siteUrl: "sc-domain:filahive.com",
+      siteUrl: "https://www.filahive.com/",
     },
   },
   aplus: {
