@@ -191,38 +191,30 @@ export function useProjectData(projectId: string) {
 
     setLoading(true)
     setError(null)
+    setData({ pagespeed: null, searchConsole: null, shopify: null, googleAds: null, technical: null })
 
-    try {
-      const baseQ = `?project=${projectId}`
+    const baseQ = `?project=${projectId}`
 
-      const results = await Promise.allSettled([
-        fetchPageSpeed(projectId, signal),
-        fetchJSON<SearchConsoleData>(`/api/search-console${baseQ}`, signal),
-        fetchJSON<ShopifyData>(`/api/shopify${baseQ}`, signal),
-        fetchJSON<GoogleAdsData>(`/api/google-ads${baseQ}`, signal),
-        fetchJSON<TechnicalData>(`/api/technical${baseQ}`, signal),
-      ])
-
+    // Progressive loading: each dataset is rendered as soon as it arrives.
+    // PageSpeed (Google PSI) can take 30-60s, so it must NOT block the page.
+    const apply = <K extends keyof ProjectData>(key: K, value: ProjectData[K]) => {
       if (signal.aborted) return
+      setData((prev) => ({ ...prev, [key]: value }))
+    }
 
-      const unwrap = <T,>(r: PromiseSettledResult<T | null>): T | null =>
-        r.status === 'fulfilled' ? r.value : null
+    const fast = [
+      fetchJSON<SearchConsoleData>(`/api/search-console${baseQ}`, signal).then((v) => apply('searchConsole', v)),
+      fetchJSON<ShopifyData>(`/api/shopify${baseQ}`, signal).then((v) => apply('shopify', v)),
+      fetchJSON<GoogleAdsData>(`/api/google-ads${baseQ}`, signal).then((v) => apply('googleAds', v)),
+      fetchJSON<TechnicalData>(`/api/technical${baseQ}`, signal).then((v) => apply('technical', v)),
+    ]
 
-      setData({
-        pagespeed: unwrap(results[0]) as PageSpeedData | null,
-        searchConsole: unwrap(results[1]) as SearchConsoleData | null,
-        shopify: unwrap(results[2]) as ShopifyData | null,
-        googleAds: unwrap(results[3]) as GoogleAdsData | null,
-        technical: unwrap(results[4]) as TechnicalData | null,
-      })
-    } catch (e: any) {
-      if (!signal.aborted) {
-        setError(e?.message ?? 'Failed to fetch project data')
-      }
-    } finally {
-      if (!signal.aborted) {
-        setLoading(false)
-      }
+    // Slow: fills in whenever it lands — UI updates reactively.
+    fetchPageSpeed(projectId, signal).then((v) => apply('pagespeed', v))
+
+    await Promise.allSettled(fast)
+    if (!signal.aborted) {
+      setLoading(false)
     }
   }, [projectId])
 

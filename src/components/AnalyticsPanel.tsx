@@ -29,6 +29,7 @@ interface AnalyticsPanelProps {
     chartLabels: string[]
   }
   seo: {
+    pending?: boolean
     mobile: ScoreSet
     desktop: ScoreSet
   }
@@ -121,7 +122,15 @@ function TrafficTab({
 }
 
 /* --- SEO Tab --- */
-function SEOTab({ mobile, desktop }: { mobile: ScoreSet; desktop: ScoreSet }) {
+function SEOTab({ pending, mobile, desktop }: { pending?: boolean; mobile: ScoreSet; desktop: ScoreSet }) {
+  if (pending) {
+    return (
+      <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-2 text-cmo-muted">
+        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-yellow-400" />
+        <p className="text-xs font-mono">Running Lighthouse audit — this can take up to a minute...</p>
+      </div>
+    )
+  }
   return (
     <div className="space-y-6">
       {/* Mobile scores */}

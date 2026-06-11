@@ -161,6 +161,7 @@ export default function DashboardPage() {
   }
 
   const seoProps = {
+    pending: !data.pagespeed,
     mobile: data.pagespeed?.mobile ?? { performance: 0, accessibility: 0, bestPractices: 0, seo: 0 },
     desktop: data.pagespeed?.desktop ?? { performance: 0, accessibility: 0, bestPractices: 0, seo: 0 },
   }

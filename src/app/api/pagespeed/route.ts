@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveCredential } from "@/lib/settings-store";
 import { getProject } from "@/lib/projects";
 
+// Google PSI can take 30-60s; default serverless timeout is too short.
+export const maxDuration = 60;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -145,7 +148,9 @@ export async function GET(request: NextRequest) {
       apiUrl.searchParams.append("category", cat)
     );
 
-    const res = await fetch(apiUrl.toString(), { cache: "no-store" });
+    // revalidate: persists in Vercel's Data Cache across invocations, so the
+    // slow PSI call only happens at most once per hour per domain/strategy.
+    const res = await fetch(apiUrl.toString(), { next: { revalidate: 3600 } });
 
     if (!res.ok) {
       const body = await res.text();
