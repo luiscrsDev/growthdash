@@ -42,8 +42,9 @@ const PROJECTS: Record<string, ProjectConfig> = {
       siteUrl: "sc-domain:aplusproperty.care",
     },
   },
-  globalbrasilshop: {
-    id: "globalbrasilshop",
+  // NOTE: id must match src/config/projects.ts (frontend uses 'gbs')
+  gbs: {
+    id: "gbs",
     name: "GlobalBrasilShop",
     domain: "globalbrasilshop.com",
     searchConsole: {

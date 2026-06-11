@@ -129,8 +129,8 @@ export async function saveGlobalCredentials(creds: ProjectCredentials): Promise<
 const ENV_MAP: Record<keyof ProjectCredentials, string> = {
   pagespeedApiKey: 'GOOGLE_PAGESPEED_API_KEY',
   serviceAccountJson: 'GOOGLE_SERVICE_ACCOUNT_JSON',
-  shopifyDomain: 'SHOPIFY_DOMAIN',
-  shopifyToken: 'SHOPIFY_TOKEN',
+  shopifyDomain: 'FILAHIVE_SHOPIFY_DOMAIN',
+  shopifyToken: 'FILAHIVE_SHOPIFY_TOKEN',
   googleAdsCid: 'APLUS_GOOGLE_ADS_CID',
 }
 

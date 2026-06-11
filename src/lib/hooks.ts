@@ -1,66 +1,107 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { ProjectConfig } from '@/config/projects'
 
 // ---------- shared types returned by API routes ----------
+// These mirror the actual JSON shapes returned by /api/* routes.
+
+export interface LighthouseScores {
+  performance: number
+  accessibility: number
+  bestPractices: number
+  seo: number
+}
+
+export interface CoreWebVital {
+  value: number
+  unit: string
+  rating: string
+}
 
 export interface PageSpeedData {
-  mobile: { performance: number; accessibility: number; bestPractices: number; seo: number }
-  desktop: { performance: number; accessibility: number; bestPractices: number; seo: number }
+  mobile: LighthouseScores
+  desktop: LighthouseScores
   coreWebVitals: {
-    fcp: { value: string; score: number }
-    lcp: { value: string; score: number }
-    tbt: { value: string; score: number }
-    cls: { value: string; score: number }
-    si: { value: string; score: number }
+    lcp: CoreWebVital
+    fid: CoreWebVital
+    cls: CoreWebVital
+    fcp: CoreWebVital
+    ttfb: CoreWebVital
   }
   issues: { severity: 'high' | 'medium' | 'low'; title: string; description: string; category: string }[]
   fetchedAt: string
 }
 
-export interface SearchConsoleData {
-  clicks: number
+export interface SearchConsoleDailyRow {
+  date: string
   impressions: number
+  clicks: number
   ctr: number
   position: number
-  topQueries: { query: string; clicks: number; impressions: number; ctr: number; position: number }[]
-  topPages: { page: string; clicks: number; impressions: number }[]
-  daily: { date: string; clicks: number; impressions: number }[]
+}
+
+export interface SearchConsoleData {
+  domain: string
+  days: number
+  mock: boolean
   fetchedAt: string
+  totals: {
+    impressions: number
+    clicks: number
+    ctr: number
+    avgPosition: number
+  }
+  daily: SearchConsoleDailyRow[]
 }
 
 export interface ShopifyData {
-  totalProducts: number
-  activeProducts: number
-  totalOrders: number
-  recentOrders: number
-  totalRevenue: number
-  recentRevenue: number
-  averageOrderValue: number
-  topProducts: { title: string; totalSold: number; revenue: number; image?: string }[]
+  store: string
+  mock: boolean
   fetchedAt: string
+  totalProducts: number
+  totalOrders: number
+  revenue: number
+  currency: string
+  topProducts: { title: string; totalSold: number; revenue: number }[]
 }
 
 export interface GoogleAdsData {
-  totalClicks: number
-  totalImpressions: number
-  totalCost: number
-  averageCpc: number
-  averageCtr: number
-  conversions: number
-  costPerConversion: number
-  campaigns: { name: string; clicks: number; impressions: number; cost: number; conversions: number }[]
-  daily: { date: string; clicks: number; impressions: number; cost: number }[]
+  cid: string
+  days: number
+  mock: boolean
   fetchedAt: string
+  metrics: {
+    impressions: number
+    clicks: number
+    conversions: number
+    cost: number
+    cpc: number
+    ctr: number
+    conversionRate: number
+    costPerConversion: number
+  }
+  daily: { date: string; impressions: number; clicks: number; conversions: number; cost: number }[]
+  topSearchTerms: { term: string; impressions: number; clicks: number; conversions: number; cost: number }[]
+}
+
+export interface SecurityHeader {
+  name: string
+  value: string | null
+  present: boolean
+  recommendation?: string
 }
 
 export interface TechnicalData {
-  ssl: { valid: boolean; issuer: string; expiresAt: string; daysLeft: number }
-  dns: { records: { type: string; value: string }[] }
-  uptime: { status: 'up' | 'down' | 'unknown'; responseTime: number }
-  headers: { name: string; value: string; status: 'good' | 'warning' | 'missing' }[]
+  domain: string
   fetchedAt: string
+  status: { code: number; text: string }
+  https: { enabled: boolean; redirectsToHttps: boolean }
+  server: string | null
+  contentType: string | null
+  poweredBy: string | null
+  responseTimeMs: number
+  securityHeaders: SecurityHeader[]
+  summary: { score: number; issues: string[]; passed: string[] }
 }
 
 export interface ProjectData {
@@ -73,9 +114,9 @@ export interface ProjectData {
 
 // ---------- fetcher helper ----------
 
-async function fetchJSON<T>(url: string): Promise<T | null> {
+async function fetchJSON<T>(url: string, signal?: AbortSignal): Promise<T | null> {
   try {
-    const res = await fetch(url)
+    const res = await fetch(url, { signal })
     if (!res.ok) return null
     return await res.json()
   } catch {
@@ -85,33 +126,41 @@ async function fetchJSON<T>(url: string): Promise<T | null> {
 
 // ---------- pagespeed helper: fetch both strategies and merge ----------
 
-async function fetchPageSpeed(projectId: string): Promise<PageSpeedData | null> {
+const DEFAULT_SCORES: LighthouseScores = { performance: 0, accessibility: 0, bestPractices: 0, seo: 0 }
+const DEFAULT_VITAL: CoreWebVital = { value: 0, unit: '', rating: 'unknown' }
+
+async function fetchPageSpeed(projectId: string, signal?: AbortSignal): Promise<PageSpeedData | null> {
   try {
     const baseQ = `?project=${projectId}`
     const [mobileRes, desktopRes] = await Promise.all([
-      fetchJSON<any>(`/api/pagespeed${baseQ}&strategy=mobile`),
-      fetchJSON<any>(`/api/pagespeed${baseQ}&strategy=desktop`),
+      fetchJSON<any>(`/api/pagespeed${baseQ}&strategy=mobile`, signal),
+      fetchJSON<any>(`/api/pagespeed${baseQ}&strategy=desktop`, signal),
     ])
 
     if (!mobileRes && !desktopRes) return null
 
-    const defaultScores = { performance: 0, accessibility: 0, bestPractices: 0, seo: 0 }
-
     return {
-      mobile: mobileRes?.scores ?? defaultScores,
-      desktop: desktopRes?.scores ?? defaultScores,
+      mobile: mobileRes?.scores ?? DEFAULT_SCORES,
+      desktop: desktopRes?.scores ?? DEFAULT_SCORES,
       coreWebVitals: (mobileRes ?? desktopRes)?.coreWebVitals ?? {
-        fcp: { value: '0', score: 0 },
-        lcp: { value: '0', score: 0 },
-        tbt: { value: '0', score: 0 },
-        cls: { value: '0', score: 0 },
-        si: { value: '0', score: 0 },
+        lcp: DEFAULT_VITAL,
+        fid: DEFAULT_VITAL,
+        cls: DEFAULT_VITAL,
+        fcp: DEFAULT_VITAL,
+        ttfb: DEFAULT_VITAL,
       },
-      issues: (mobileRes ?? desktopRes)?.topIssues?.map((i: any) => ({
-        ...i,
-        severity: i.score < 0.5 ? 'high' as const : 'medium' as const,
-        category: 'Performance',
-      })) ?? [],
+      issues:
+        (mobileRes ?? desktopRes)?.topIssues?.map((i: any) => ({
+          title: i.title,
+          description: i.description ?? '',
+          severity:
+            i.score !== null && i.score < 0.5
+              ? ('high' as const)
+              : i.score !== null && i.score < 0.7
+                ? ('medium' as const)
+                : ('low' as const),
+          category: 'Performance',
+        })) ?? [],
       fetchedAt: new Date().toISOString(),
     }
   } catch {
@@ -138,42 +187,40 @@ export function useProjectData(projectId: string) {
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
+    const { signal } = controller
 
     setLoading(true)
     setError(null)
 
     try {
-      // We always attempt pagespeed, search-console, and technical.
-      // Shopify & Google Ads are conditional on the project config,
-      // but we let the API route return 404 if not applicable.
       const baseQ = `?project=${projectId}`
 
       const results = await Promise.allSettled([
-        fetchPageSpeed(projectId),
-        fetchJSON<SearchConsoleData>(`/api/search-console${baseQ}`),
-        fetchJSON<ShopifyData>(`/api/shopify${baseQ}`),
-        fetchJSON<GoogleAdsData>(`/api/google-ads${baseQ}`),
-        fetchJSON<TechnicalData>(`/api/technical${baseQ}`),
+        fetchPageSpeed(projectId, signal),
+        fetchJSON<SearchConsoleData>(`/api/search-console${baseQ}`, signal),
+        fetchJSON<ShopifyData>(`/api/shopify${baseQ}`, signal),
+        fetchJSON<GoogleAdsData>(`/api/google-ads${baseQ}`, signal),
+        fetchJSON<TechnicalData>(`/api/technical${baseQ}`, signal),
       ])
 
-      if (controller.signal.aborted) return
+      if (signal.aborted) return
 
       const unwrap = <T,>(r: PromiseSettledResult<T | null>): T | null =>
         r.status === 'fulfilled' ? r.value : null
 
       setData({
-        pagespeed: unwrap(results[0]),
-        searchConsole: unwrap(results[1]),
-        shopify: unwrap(results[2]),
-        googleAds: unwrap(results[3]),
-        technical: unwrap(results[4]),
+        pagespeed: unwrap(results[0]) as PageSpeedData | null,
+        searchConsole: unwrap(results[1]) as SearchConsoleData | null,
+        shopify: unwrap(results[2]) as ShopifyData | null,
+        googleAds: unwrap(results[3]) as GoogleAdsData | null,
+        technical: unwrap(results[4]) as TechnicalData | null,
       })
     } catch (e: any) {
-      if (!controller.signal.aborted) {
+      if (!signal.aborted) {
         setError(e?.message ?? 'Failed to fetch project data')
       }
     } finally {
-      if (!controller.signal.aborted) {
+      if (!signal.aborted) {
         setLoading(false)
       }
     }

@@ -10,13 +10,6 @@ export interface ProjectConfig {
     shopify: boolean
     googleAds: boolean
   }
-  shopify?: {
-    storeDomain: string
-    accessToken: string
-  }
-  googleAds?: {
-    customerId: string
-  }
   agents: AgentConfig[]
 }
 
@@ -49,10 +42,6 @@ export const projects: ProjectConfig[] = [
       shopify: true,
       googleAds: false,
     },
-    shopify: {
-      storeDomain: process.env.FILAHIVE_SHOPIFY_DOMAIN || '',
-      accessToken: process.env.FILAHIVE_SHOPIFY_TOKEN || '',
-    },
     agents: [
       { id: 'reddit', name: 'Reddit agent', icon: 'MessageCircle', color: '#FF4500', enabled: true },
       { id: 'seo', name: 'SEO agent', icon: 'Search', color: '#4ade80', enabled: true },
@@ -80,9 +69,6 @@ export const projects: ProjectConfig[] = [
       searchConsole: true,
       shopify: false,
       googleAds: true,
-    },
-    googleAds: {
-      customerId: process.env.APLUS_GOOGLE_ADS_CID || '106-780-6098',
     },
     agents: [
       { id: 'seo', name: 'SEO agent', icon: 'Search', color: '#4ade80', enabled: true },

@@ -130,12 +130,23 @@ export default function DashboardPage() {
   }
 
   // Map API data to component props
+
+  // Real delta: compare second half of the period vs first half
+  const halfDelta = (rows: { [k: string]: any }[] | undefined, key: string): number | undefined => {
+    if (!rows || rows.length < 4) return undefined
+    const mid = Math.floor(rows.length / 2)
+    const first = rows.slice(0, mid).reduce((s, r) => s + (r[key] ?? 0), 0)
+    const second = rows.slice(mid).reduce((s, r) => s + (r[key] ?? 0), 0)
+    if (first === 0) return undefined
+    return Number((((second - first) / first) * 100).toFixed(1))
+  }
+
   const trafficProps = {
     stats: data.searchConsole
       ? [
-          { label: 'Impressions', value: ((data.searchConsole as any).totals?.impressions ?? data.searchConsole.impressions ?? 0).toLocaleString(), delta: 2.4 },
-          { label: 'Clicks', value: ((data.searchConsole as any).totals?.clicks ?? data.searchConsole.clicks ?? 0).toLocaleString(), delta: 8.2 },
-          { label: 'Avg Position', value: Math.round((data.searchConsole as any).totals?.avgPosition ?? data.searchConsole.position ?? 0).toString() },
+          { label: 'Impressions', value: data.searchConsole.totals.impressions.toLocaleString(), delta: halfDelta(data.searchConsole.daily, 'impressions') },
+          { label: 'Clicks', value: data.searchConsole.totals.clicks.toLocaleString(), delta: halfDelta(data.searchConsole.daily, 'clicks') },
+          { label: 'Avg Position', value: Math.round(data.searchConsole.totals.avgPosition).toString() },
         ]
       : [
           { label: 'Impressions', value: '—' },
@@ -162,10 +173,11 @@ export default function DashboardPage() {
         )
       : 0,
     details: [
-      { label: 'Server', value: data.technical?.headers?.find((h) => h.name === 'server')?.value ?? 'Unknown' },
-      { label: 'Status', value: data.technical?.uptime?.status === 'up' ? '200 OK' : 'Unknown' },
-      { label: 'Response Time', value: data.technical?.uptime?.responseTime ? `${data.technical.uptime.responseTime}ms` : '—' },
-      { label: 'HTTPS', value: data.technical?.ssl?.valid ? 'Valid' : 'Check needed' },
+      { label: 'Server', value: data.technical?.server ?? 'Unknown' },
+      { label: 'Status', value: data.technical ? `${data.technical.status.code} ${data.technical.status.text}`.trim() : 'Unknown' },
+      { label: 'Response Time', value: data.technical ? `${data.technical.responseTimeMs}ms` : '—' },
+      { label: 'HTTPS', value: data.technical ? (data.technical.https.enabled ? 'Valid' : 'Not enabled') : '—' },
+      { label: 'Security Score', value: data.technical ? `${data.technical.summary.score}/100` : '—' },
       { label: 'Platform', value: project.id === 'filahive' ? 'Shopify' : 'Next.js / Vercel' },
     ],
   }

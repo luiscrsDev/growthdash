@@ -29,7 +29,7 @@ npm run dev                   # http://localhost:3000
 | Integration | Required env vars | Setup |
 |---|---|---|
 | PageSpeed Insights | `GOOGLE_PAGESPEED_API_KEY` | [Get a key](https://developers.google.com/speed/docs/insights/v5/get-started) |
-| Search Console | `GOOGLE_SERVICE_ACCOUNT_JSON` | Create a service account, add it as a user in Search Console, base64-encode the JSON key |
+| Search Console | `GSC_CLIENT_ID`, `GSC_CLIENT_SECRET`, `GSC_REFRESH_TOKEN` | Create OAuth2 credentials in Google Cloud, authorize with the `webmasters.readonly` scope, and store the refresh token (falls back to mock data if unset) |
 | Shopify (FilaHive) | `FILAHIVE_SHOPIFY_DOMAIN`, `FILAHIVE_SHOPIFY_TOKEN` | Create a private app with read access to products and orders |
 | Google Ads (APLUS) | `APLUS_GOOGLE_ADS_CID` | Customer ID for the Google Ads account |
 
